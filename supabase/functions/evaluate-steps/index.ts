@@ -122,30 +122,32 @@ Marks Available: ${maxMarks}
 ---
 
 FEEDBACK REQUIREMENTS:
-- Use $...$ for ALL mathematical expressions.
-- modelAnswer: Provide a 100% accurate step-by-step solution leading to "${correctAnswerStr}".
-- DO NOT include "Step 1", "Step 2" prefixes in modelAnswer.
-- positive_feedback: List exactly what was done correctly.
-- constructive_feedback: Only mention actual errors. If none, state "Your answer is completely correct."
-
----
-
-Return your evaluation as a JSON object:
-{
-  "steps": [
+    - Use $...$ for ALL mathematical expressions.
+    - modelAnswer: Provide a 100% accurate step-by-step solution leading to "${correctAnswerStr}".
+    - DO NOT include "Step 1", "Step 2" prefixes in modelAnswer.
+    - Each item in modelAnswer array should be a single logical step. Do NOT combine multiple steps into one string with many periods.
+    - positive_feedback: List exactly what was done correctly.
+    - constructive_feedback: Only mention actual errors. If none, state "Your answer is completely correct."
+    
+    ---
+    
+    Return your evaluation as a JSON object:
     {
-      "stepIndex": number,
-      "stepContent": string,
-      "isCorrect": boolean,
-      "feedback": string
+      "steps": [
+        {
+          "stepIndex": number,
+          "stepContent": string,
+          "isCorrect": boolean,
+          "feedback": string
+        }
+      ],
+      "modelAnswer": [
+        "Description with $math$",
+        "Next logical step with $math$"
+      ],
+      "correctPoints": ["..."],
+      "improvementPoints": ["..."]
     }
-  ],
-  "modelAnswer": [
-    "Description: $math$"
-  ],
-  "correctPoints": ["..."],
-  "improvementPoints": ["..."]
-}
 
 IMPORTANT: Return ONLY the JSON object.`;
 
