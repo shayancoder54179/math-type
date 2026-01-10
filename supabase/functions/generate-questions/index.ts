@@ -51,6 +51,7 @@ serve(async (req) => {
        - Detailed model answer showing step-by-step working.
        - STRICT BLOCK SEPARATION: "text" blocks must contain ONLY plain text. "math" blocks must contain ONLY LaTeX math.
        - NEVER put LaTeX (like $x$ or equations) inside a "text" block.
+       - Answer Boxes: Define one or more answer boxes for the final result. Each box needs a label (e.g., "x =") and the correct answer value.
 
     Format the output as a JSON object with this structure:
     {
@@ -62,6 +63,9 @@ serve(async (req) => {
             {"type": "text", "content": ": "}
           ],
           "marks": 4,
+          "answerBoxes": [
+            { "label": "x =", "answer": "5" }
+          ],
           "modelAnswer": {
             "finalAnswer": "x = 5",
             "workingSteps": [
@@ -77,6 +81,7 @@ serve(async (req) => {
     - BLOCK INTEGRITY: Any mathematical variable (like $x$), number in a formula, or equation MUST be in its own "math" block. 
     - Text blocks must NOT contain any $ symbols or LaTeX commands.
     - DOUBLE-CHECK YOUR MATH: Before finalizing each question, solve it yourself internally to ensure the finalAnswer is 100% accurate.
+    - ANSWER BOXES: If solving for multiple variables (e.g., x and y), provide an answer box for each. The label should be concise (e.g., "x =", "y =", "Total Area =").
     - DO NOT include "Step 1", "Step 2" prefixes in workingSteps.
     - Ensure questions are curriculum-appropriate.
     - Use proper LaTeX notation for all math.

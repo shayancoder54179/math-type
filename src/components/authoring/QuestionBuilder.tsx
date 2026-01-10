@@ -333,7 +333,7 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
             />
           </div>
         ) : (
-          <div className="min-h-[150px] border border-input rounded-md bg-background p-4 space-y-1 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
+          <div className="min-h-[150px] border border-input rounded-md bg-background p-4 flex flex-wrap items-center gap-x-2 gap-y-1.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
             {blocks.length === 0 && (
               <div className="text-muted-foreground text-sm italic p-2 text-center opacity-50">
                 Start typing your question...

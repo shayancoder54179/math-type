@@ -198,9 +198,9 @@ export function QuestionDisplay({ question, answers, onAnswerChange }: QuestionD
             {renderSegmentedElements()}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1.5">
             {question.blocks.map(block => (
-              <div key={block.id}>{renderBlock(block)}</div>
+              <div key={block.id} className="inline-block">{renderBlock(block)}</div>
             ))}
           </div>
         )}

@@ -60,7 +60,7 @@ export function QuestionBlock({ block, onChange, onDelete, allBlocks = [], quest
   };
 
   return (
-    <div className="group relative flex items-start gap-1 p-1 hover:bg-muted/50 rounded transition-colors">
+    <div className="group relative flex items-center gap-1 p-0.5 hover:bg-muted/50 rounded transition-colors">
       <div className="flex-1 min-w-0">
         {block.type === 'math' ? (
           <MathInput
@@ -68,7 +68,7 @@ export function QuestionBlock({ block, onChange, onDelete, allBlocks = [], quest
             value={block.content}
             onChange={(content) => onChange(block.id, content)}
             placeholder="Enter math..."
-            className="w-full"
+            className="w-auto min-w-[30px]"
             variant="ghost"
           />
         ) : (
@@ -77,7 +77,8 @@ export function QuestionBlock({ block, onChange, onDelete, allBlocks = [], quest
             value={block.content}
             onChange={(e) => onChange(block.id, e.target.value)}
             placeholder="Enter text..."
-            className="w-full border-none shadow-none focus-visible:ring-0 px-0 min-h-0 h-auto py-1"
+            className="w-auto min-w-[60px] border-none shadow-none focus-visible:ring-0 px-1 min-h-0 h-auto py-0.5 bg-transparent"
+            style={{ width: `${Math.max(block.content.length + 1, 4)}ch` }}
           />
         )}
         {showInsertBlank && (

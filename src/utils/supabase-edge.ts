@@ -102,7 +102,12 @@ export async function generateQuestionsWithOpenAI(
             ...q.modelAnswer.workingSteps,
             `Final Answer: ${q.modelAnswer.finalAnswer}`
         ] : [],
-        answerBoxes: [{
+        answerBoxes: q.answerBoxes ? q.answerBoxes.map((box: any) => ({
+            id: crypto.randomUUID(),
+            label: box.label || "Answer",
+            answer: box.answer || "",
+            labelIsMath: box.label ? /[a-zA-Z]/.test(box.label) && box.label.includes('=') : false
+        })) : [{
             id: crypto.randomUUID(),
             label: "Answer",
             answer: q.modelAnswer?.finalAnswer || ""
