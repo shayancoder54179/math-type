@@ -60,9 +60,15 @@ export function QuestionBlock({ block, onChange, onDelete, allBlocks = [], quest
   };
 
   return (
-    <div className="group relative flex items-center gap-1 p-0.5 hover:bg-muted/50 rounded transition-colors">
+    <div className={`group relative flex items-center gap-1 p-0.5 hover:bg-muted/50 rounded transition-colors ${block.type === 'newline' ? 'w-full' : ''}`}>
       <div className="flex-1 min-w-0">
-        {block.type === 'math' ? (
+        {block.type === 'newline' ? (
+          <div className="w-full flex items-center gap-2">
+            <div className="h-[1px] flex-1 bg-border border-dashed border-t" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-2">Line Break</span>
+            <div className="h-[1px] flex-1 bg-border border-dashed border-t" />
+          </div>
+        ) : block.type === 'math' ? (
           <MathInput
             ref={mathInputRef}
             value={block.content}
@@ -78,7 +84,7 @@ export function QuestionBlock({ block, onChange, onDelete, allBlocks = [], quest
             onChange={(e) => onChange(block.id, e.target.value)}
             placeholder="Enter text..."
             className="w-auto min-w-[60px] border-none shadow-none focus-visible:ring-0 px-1 min-h-0 h-auto py-0.5 bg-transparent"
-            style={{ width: `${Math.max(block.content.length + 1, 4)}ch` }}
+            style={{ width: `${Math.max((block.content || '').length + 1, 4)}ch` }}
           />
         )}
         {showInsertBlank && (

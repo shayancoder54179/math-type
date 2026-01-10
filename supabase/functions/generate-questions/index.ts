@@ -50,6 +50,7 @@ serve(async (req) => {
        - Marks allocation (appropriate to difficulty, typically 2-8 marks).
        - Detailed model answer showing step-by-step working.
        - STRICT BLOCK SEPARATION: "text" blocks must contain ONLY plain text. "math" blocks must contain ONLY LaTeX math.
+       - NEW LINES: Use {"type": "newline"} blocks to separate different parts of the question onto new lines (e.g., to put an equation below the setup text).
        - NEVER put LaTeX (like $x$ or equations) inside a "text" block.
        - Answer Boxes: Define one or more answer boxes for the final result. Each box needs a label (e.g., "x =") and the correct answer value.
 
@@ -60,7 +61,9 @@ serve(async (req) => {
           "questionBlocks": [
             {"type": "text", "content": "Solve for "},
             {"type": "math", "content": "x"},
-            {"type": "text", "content": ": "}
+            {"type": "text", "content": ": "},
+            {"type": "newline"},
+            {"type": "math", "content": "3(2x-4)=18"}
           ],
           "marks": 4,
           "answerBoxes": [

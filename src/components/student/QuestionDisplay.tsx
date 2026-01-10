@@ -133,6 +133,9 @@ export function QuestionDisplay({ question, answers, onAnswerChange }: QuestionD
   };
 
   const renderBlock = (block: typeof question.blocks[0]) => {
+    if (block.type === 'newline') {
+      return null;
+    }
     if (block.type === 'math') {
       // For math blocks, check if there are blanks
       const parts = parseBlanks(block.content);
@@ -200,7 +203,12 @@ export function QuestionDisplay({ question, answers, onAnswerChange }: QuestionD
         ) : (
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1.5">
             {question.blocks.map(block => (
-              <div key={block.id} className="inline-block">{renderBlock(block)}</div>
+              <div 
+                key={block.id} 
+                className={block.type === 'newline' ? "w-full h-0" : "inline-block"}
+              >
+                {renderBlock(block)}
+              </div>
             ))}
           </div>
         )}

@@ -1,4 +1,4 @@
-export type BlockType = 'text' | 'math';
+export type BlockType = 'text' | 'math' | 'newline';
 export type QuestionType = 'mcq' | 'open-ended' | 'fill-in-the-blank';
 
 export interface QuestionBlock {

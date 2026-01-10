@@ -341,22 +341,29 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
             )}
             
             {blocks.map(block => (
-              <QuestionBlock
-                key={block.id}
-                block={block}
-                onChange={handleBlockChange}
-                onDelete={handleBlockDelete}
-                allBlocks={blocks}
-                questionType={questionType}
-              />
+              <div 
+                key={block.id} 
+                className={block.type === 'newline' ? "w-full flex items-center gap-2 py-2" : "inline-block"}
+              >
+                <QuestionBlock
+                  block={block}
+                  onChange={handleBlockChange}
+                  onDelete={handleBlockDelete}
+                  allBlocks={blocks}
+                  questionType={questionType}
+                />
+              </div>
             ))}
             
-            <div className="flex items-center gap-2 pt-2 mt-2 border-t border-dashed">
+            <div className="flex items-center gap-2 pt-2 mt-2 border-t border-dashed w-full">
                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('text')} className="h-7 text-xs text-muted-foreground hover:text-foreground">
                  + Add Text
                </Button>
                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('math')} className="h-7 text-xs text-muted-foreground hover:text-foreground">
                  + Add Math
+               </Button>
+               <Button variant="ghost" size="sm" onClick={() => handleAddBlock('newline')} className="h-7 text-xs text-muted-foreground hover:text-foreground">
+                 + Add New Line
                </Button>
             </div>
           </div>
