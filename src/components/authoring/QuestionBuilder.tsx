@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QuestionBlock } from './QuestionBlock';
-import { BlockSelector } from './BlockSelector';
 import { AnswerBox } from './AnswerBox';
 import { MCQOptionEditor } from './MCQOptionEditor';
 import { QuestionDisplay } from '@/components/student/QuestionDisplay';
@@ -10,7 +9,7 @@ import { SegmentedMathEditor } from './SegmentedMathEditor';
 import { Plus } from 'lucide-react';
 import type { Question, QuestionBlock as QuestionBlockType, AnswerBox as AnswerBoxType, MCQOption, QuestionType, BlockType, SegmentedElement } from '@/types';
 import { generateId } from '@/utils/storage';
-import { getTotalBlanks, findBlanks } from '@/utils/blanks';
+import { findBlanks } from '@/utils/blanks';
 
 interface QuestionBuilderProps {
   question?: Question;
@@ -324,12 +323,7 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Question Content</h3>
-          {questionType !== 'fill-in-the-blank' && (
-            <BlockSelector onSelect={handleAddBlock} />
-          )}
-        </div>
+        <h3 className="text-sm font-semibold">Question Content</h3>
         {questionType === 'fill-in-the-blank' ? (
           <div className="p-4 border border-border rounded-md bg-card">
             <SegmentedMathEditor
@@ -339,7 +333,13 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
             />
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="min-h-[150px] border border-input rounded-md bg-background p-4 space-y-1 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all">
+            {blocks.length === 0 && (
+              <div className="text-muted-foreground text-sm italic p-2 text-center opacity-50">
+                Start typing your question...
+              </div>
+            )}
+            
             {blocks.map(block => (
               <QuestionBlock
                 key={block.id}
@@ -350,6 +350,15 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
                 questionType={questionType}
               />
             ))}
+            
+            <div className="flex items-center gap-2 pt-2 mt-2 border-t border-dashed">
+               <Button variant="ghost" size="sm" onClick={() => handleAddBlock('text')} className="h-7 text-xs text-muted-foreground hover:text-foreground">
+                 + Add Text
+               </Button>
+               <Button variant="ghost" size="sm" onClick={() => handleAddBlock('math')} className="h-7 text-xs text-muted-foreground hover:text-foreground">
+                 + Add Math
+               </Button>
+            </div>
           </div>
         )}
       </div>

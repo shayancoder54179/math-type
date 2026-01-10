@@ -34,6 +34,7 @@ export interface Question {
   mcqOptions?: MCQOption[]; // For MCQ questions
   segmentedElements?: SegmentedElement[]; // For fill-in-the-blank questions
   marks?: number; // Total marks allocated for this question (default: 1)
+  modelAnswer?: string[]; // Step-by-step solution for the question
 }
 
 export interface Quiz {
@@ -50,19 +51,27 @@ export interface StepEvaluation {
   stepContent: string;
   isCorrect: boolean;
   feedback: string;
-  marksAwarded?: number; // Marks awarded for this step (for partial credit)
+  marksAwarded?: number;
+}
+
+export interface AIFeedback {
+  modelAnswer: string[];
+  correctPoints: string[];
+  improvementPoints: string[];
 }
 
 export interface EvaluationResult {
   questionId: string;
   isCorrect: boolean;
+  status: 'correct' | 'incorrect' | 'partially_correct';
   studentAnswer: string | string[];
   correctAnswer: string | string[];
   finalAnswerCorrect: boolean;
-  workingSteps?: StepEvaluation[];
-  correctSolutionSteps?: string[]; // Correct solution steps for open-ended questions
-  marksAwarded: number; // Marks awarded for this question
-  maxMarks: number; // Maximum marks for this question
+  workingSteps?: StepEvaluation[]; // Kept for backward compatibility or detailed step analysis
+  aiFeedback?: AIFeedback; // New structured feedback
+  correctSolutionSteps?: string[]; // Deprecated in favor of aiFeedback.modelAnswer
+  marksAwarded: number;
+  maxMarks: number;
   feedback?: string;
 }
 

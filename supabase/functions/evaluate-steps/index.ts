@@ -1,5 +1,4 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,70 +83,71 @@ serve(async (req) => {
 
     const maxMarks = question.marks || 1;
     
-    const prompt = `You are a math teacher evaluating a student's solution to a math problem.
+    // Hardcoded for now, but should come from question data in the future
+    const qualification = "IGCSE"; // Default to IGCSE if not specified
+    const board = "Edexcel"; // Default to Edexcel if not specified
+    const subject = "Mathematics";
 
-PROBLEM TO SOLVE:
-Question: ${question.instruction}
-${questionText}
+    let prompt = `You are an expert mathematics examiner for UK qualifications (${qualification}). 
 
-CORRECT FINAL ANSWER: ${correctAnswerStr}
-STUDENT'S FINAL ANSWER: ${studentFinalAnswerStr}
-TOTAL MARKS FOR THIS QUESTION: ${maxMarks}
+CRITICAL EVALUATION SEQUENCE:
+1. FINAL ANSWER CHECK: Does the student's final answer "${studentFinalAnswerStr}" match the ground truth "${correctAnswerStr}"? (Allow for equivalent mathematical forms).
+2. WORKING VALIDITY CHECK: Regardless of whether the final answer is correct, evaluate the student's working steps. Are they mathematically sound?
+3. AWARD MARKS: 
+   - If (Final Answer Matches) AND (Working is Valid) → FULL MARKS.
+   - If (Final Answer Matches) BUT (Working is missing/incomplete) → Award partial marks.
+   - If (Final Answer is Wrong) BUT (Working shows correct method) → Award partial marks (Method marks).
 
-STUDENT'S WORKING STEPS:
+RULES:
+- Do NOT penalize for taking a different (but valid) approach than your model answer.
+- Only mark a step as wrong if there is an actual mathematical error.
+- The Ground Truth "${correctAnswerStr}" is absolute. If your internal solution differs, YOU are wrong. Adjust your logic to match the ground truth.
+
+BEFORE EVALUATING THE STUDENT: 
+1. Solve the question yourself: ${questionText}
+2. Ensure your solution matches the absolute ground truth: ${correctAnswerStr}.
+
+THEN EVALUATE THE STUDENT: 
+- Student Final Answer: ${studentFinalAnswerStr}
+- Student Working Steps:
 ${stepsText}
 
-TASK: 
-1. Evaluate each of the student's working steps to determine if they are mathematically correct and logically lead toward solving the problem correctly.
-2. If the student's final answer is incorrect, provide the correct solution steps.
-3. Consider the mark allocation (${maxMarks} marks total) when evaluating - steps should be evaluated fairly based on their contribution to solving the problem.
+---
 
-For each student step, evaluate:
-1. Is the step mathematically correct? (Check for calculation errors, algebraic mistakes, etc.)
-2. Does this step logically progress toward the correct answer? (Even if the student's final answer is wrong, the steps can still be correct if they follow valid mathematical reasoning)
-3. Is the step appropriate for solving this type of problem?
+QUESTION DATA:
+Question: ${question.instruction}
+${questionText}
+Marks Available: ${maxMarks}
 
-IMPORTANT:
-- Evaluate steps independently - a step can be correct even if the student's final answer is wrong
-- A step is correct if it's mathematically valid and moves toward the solution
-- Be strict but fair - mark steps as incorrect only if there are actual mathematical errors
-- Consider that there may be multiple valid solution paths
-- If the student's answer is wrong, provide clear, step-by-step correct solution
+---
 
-Return your evaluation as a JSON object with:
-- "steps": array of step evaluations (same format as before)
-- "correctSolutionSteps": array of strings (only include if student's final answer is incorrect) - each string is a step in the correct solution
+FEEDBACK REQUIREMENTS:
+- Use $...$ for ALL mathematical expressions.
+- modelAnswer: Provide a 100% accurate step-by-step solution leading to "${correctAnswerStr}".
+- DO NOT include "Step 1", "Step 2" prefixes in modelAnswer.
+- positive_feedback: List exactly what was done correctly.
+- constructive_feedback: Only mention actual errors. If none, state "Your answer is completely correct."
 
-IMPORTANT FOR correctSolutionSteps FORMATTING:
-- Format each step as "Text description: math expression"
-- Keep text and math separate - text before colon, math after colon
-- ALWAYS include spaces around operators and keywords in math expressions:
-  - Use "x + 2 = 0 or x + 3 = 0" NOT "x+2=0orx+3=0"
-  - Use "x = -2 or x = -3" NOT "x=-2orx=-3"
-  - Always put spaces around: =, +, -, *, /, "or", "and"
-- Examples:
-  - "Factor: (x + 2)(x + 3) = 0"
-  - "Apply zero product property: x + 2 = 0 or x + 3 = 0"
-  - "Solve: x = -2 or x = -3"
-- If a step is pure math with no description, just provide the math expression with proper spacing
+---
 
-Example format:
+Return your evaluation as a JSON object:
 {
   "steps": [
     {
-      "stepIndex": 0,
-      "stepContent": "x^2 + 5x + 6 = 0",
-      "isCorrect": true,
-      "feedback": "Correctly set up the equation from the problem statement."
+      "stepIndex": number,
+      "stepContent": string,
+      "isCorrect": boolean,
+      "feedback": string
     }
   ],
-  "correctSolutionSteps": [
-    "x^2 + 5x + 6 = 0",
-    "Factor: (x + 2)(x + 3) = 0",
-    "Apply zero product property: x + 2 = 0 or x + 3 = 0",
-    "Solve: x = -2 or x = -3"
-  ]
-}`;
+  "modelAnswer": [
+    "Description: $math$"
+  ],
+  "correctPoints": ["..."],
+  "improvementPoints": ["..."]
+}
+
+IMPORTANT: Return ONLY the JSON object.`;
 
     // Call OpenAI API
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -157,7 +157,7 @@ Example format:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -208,7 +208,7 @@ Example format:
     let parsedResponse: { steps?: StepEvaluation[] };
     try {
       parsedResponse = JSON.parse(content);
-    } catch (e) {
+    } catch {
       // Try to extract JSON from markdown code blocks if present
       const jsonMatch = content.match(/```(?:json)?\s*(\{.*?\})\s*```/s);
       if (jsonMatch) {
@@ -246,20 +246,23 @@ Example format:
     }
 
     // Ensure stepContent matches original student steps
-    steps = steps.map((step, idx) => ({
+    // Truncate steps to match studentSteps length to avoid duplicates or hallucinations
+    steps = steps.slice(0, studentSteps.length).map((step, idx) => ({
       ...step,
       stepIndex: idx,
       stepContent: studentSteps[idx] || step.stepContent,
     }));
 
-    // Extract correct solution steps if provided
-    const correctSolutionSteps = parsedResponse.correctSolutionSteps && Array.isArray(parsedResponse.correctSolutionSteps)
-      ? parsedResponse.correctSolutionSteps
-      : undefined;
+    // Extract new fields
+    const modelAnswer = parsedResponse.modelAnswer || [];
+    const correctPoints = parsedResponse.correctPoints || [];
+    const improvementPoints = parsedResponse.improvementPoints || [];
 
     const response: StepEvaluationResponse = {
       steps,
-      correctSolutionSteps,
+      modelAnswer,
+      correctPoints,
+      improvementPoints,
     };
 
     return new Response(

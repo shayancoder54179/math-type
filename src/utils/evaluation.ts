@@ -2,7 +2,6 @@ import type { Question, EvaluationResult, QuizEvaluation, StepEvaluation } from 
 import { evaluateWorkingStepsWithOpenAI } from './supabase-edge';
 
 const WORKING_STEPS_KEY_PREFIX = 'working-steps-';
-const FINAL_ANSWER_KEY_PREFIX = 'final-answer-';
 
 /**
  * Normalize LaTeX expression for comparison
@@ -48,6 +47,24 @@ export function extractValueFromEquation(latex: string): string[] {
   cleaned = cleaned.replace(/\s+/g, ' ');
   
   // Try to match patterns like "x = 5" or "x=5"
+  // Also handle "x = -2 or x = -3" type answers by splitting on "or" / "and" first
+  const splitParts = cleaned.split(/\s+(?:or|and)\s+/i);
+  
+  if (splitParts.length > 1) {
+    // If we have "or"/"and", process each part
+    const values: string[] = [];
+    for (const part of splitParts) {
+       const partMatch = part.match(/=\s*([^,]+)/);
+       if (partMatch) {
+         values.push(partMatch[1].trim());
+       } else {
+         // If just a number/expression without "=", take it as is
+         values.push(part.trim());
+       }
+    }
+    return values;
+  }
+
   const equationMatch = cleaned.match(/=\s*([^,]+(?:,\s*[^,]+)*)/);
   if (equationMatch) {
     const values = equationMatch[1].split(',').map(v => v.trim());
@@ -120,6 +137,7 @@ export function evaluateMCQ(
     return {
       questionId: question.id,
       isCorrect: false,
+      status: 'incorrect',
       studentAnswer,
       correctAnswer: '',
       finalAnswerCorrect: false,
@@ -135,6 +153,7 @@ export function evaluateMCQ(
   return {
     questionId: question.id,
     isCorrect,
+    status: isCorrect ? 'correct' : 'incorrect',
     studentAnswer,
     correctAnswer: correctOption?.id || '',
     finalAnswerCorrect: isCorrect,
@@ -157,6 +176,7 @@ export function evaluateFillInTheBlank(
     return {
       questionId: question.id,
       isCorrect: false,
+      status: 'incorrect',
       studentAnswer: Object.values(studentAnswers),
       correctAnswer: [],
       finalAnswerCorrect: false,
@@ -193,17 +213,23 @@ export function evaluateFillInTheBlank(
   
   // Generate appropriate feedback based on how many are correct
   let feedback: string;
+  let status: 'correct' | 'incorrect' | 'partially_correct';
+  
   if (allCorrect) {
     feedback = 'All blanks filled correctly!';
+    status = 'correct';
   } else if (correctCount === 0) {
     feedback = 'All answers are incorrect.';
+    status = 'incorrect';
   } else {
     feedback = `Some answers are incorrect. (${correctCount} of ${totalCount} correct)`;
+    status = 'partially_correct';
   }
   
   return {
     questionId: question.id,
     isCorrect: allCorrect,
+    status,
     studentAnswer: studentAnswerArray,
     correctAnswer: correctAnswerArray,
     finalAnswerCorrect: allCorrect,
@@ -221,7 +247,6 @@ export async function evaluateOpenEnded(
   studentAnswers: Record<string, string>
 ): Promise<EvaluationResult> {
   const WORKING_STEPS_KEY = `${WORKING_STEPS_KEY_PREFIX}${question.id}`;
-  const FINAL_ANSWER_KEY = `${FINAL_ANSWER_KEY_PREFIX}${question.id}`;
   
   // Extract working steps
   const workingStepsData = studentAnswers[WORKING_STEPS_KEY];
@@ -235,58 +260,68 @@ export async function evaluateOpenEnded(
     }
   }
   
-  // Extract final answers
-  const finalAnswers: string[] = [];
+  // Extract correct answer(s) from question
   const correctAnswers: string[] = [];
-  
   if (question.answerBoxes && question.answerBoxes.length > 0) {
-    for (const answerBox of question.answerBoxes) {
-      const finalAnswerKey = `${FINAL_ANSWER_KEY}-${answerBox.id}`;
-      const studentFinalAnswer = studentAnswers[finalAnswerKey] || '';
-      finalAnswers.push(studentFinalAnswer);
-      correctAnswers.push(answerBox.answer);
-    }
-  } else {
-    // Fallback: single final answer
-    const studentFinalAnswer = studentAnswers[FINAL_ANSWER_KEY] || '';
-    finalAnswers.push(studentFinalAnswer);
-    // For single answer, we need to extract from question blocks or use a default
-    correctAnswers.push(question.answerBoxes?.[0]?.answer || '');
+    correctAnswers.push(...question.answerBoxes.map(b => b.answer));
+  } else if (question.answerBoxes?.[0]?.answer) {
+    correctAnswers.push(question.answerBoxes[0].answer);
   }
   
-  // Evaluate final answers
-  let finalAnswerCorrect = true;
-  if (finalAnswers.length === correctAnswers.length) {
-    for (let i = 0; i < finalAnswers.length; i++) {
-      if (!compareMathExpressions(finalAnswers[i], correctAnswers[i])) {
-        finalAnswerCorrect = false;
-        break;
-      }
-    }
-  } else {
-    finalAnswerCorrect = false;
+  // Determine student's "final answer" from the last working step
+  // Filter out empty steps if any, but keep at least one if all empty
+  const nonEmptySteps = workingSteps.filter(s => s.trim() !== '');
+  const lastStep = nonEmptySteps.length > 0 ? nonEmptySteps[nonEmptySteps.length - 1] : (workingSteps[workingSteps.length - 1] || '');
+  const studentFinalAnswer = lastStep;
+  
+  // Evaluate final answer (local check)
+  let finalAnswerCorrect = false;
+  if (correctAnswers.length > 0 && studentFinalAnswer) {
+     // Check if the last step matches ANY of the correct answers
+     finalAnswerCorrect = correctAnswers.some(ca => compareMathExpressions(studentFinalAnswer, ca));
   }
   
   const maxMarks = question.marks || 1;
   
   // Evaluate working steps with OpenAI if student provided steps
-  // This evaluates steps independently of whether the final answer is correct
   let stepEvaluations: StepEvaluation[] | undefined;
-  let correctSolutionSteps: string[] | undefined;
+  let aiFeedback: { modelAnswer: string[]; correctPoints: string[]; improvementPoints: string[] } | undefined;
+  
   if (workingSteps.length > 0 && correctAnswers.length > 0) {
     try {
-      // Use student's final answer (even if wrong) and correct answer for context
-      const studentFinalAnswerForEvaluation = finalAnswers.length > 0 ? finalAnswers : ['(no answer provided)'];
+      // Filter out empty steps before sending to AI to avoid hallucinations
+      const cleanWorkingSteps = workingSteps.filter(s => s.trim() !== '');
+      
+      if (cleanWorkingSteps.length === 0) {
+        // If all steps were empty, skip AI evaluation
+        return {
+          questionId: question.id,
+          isCorrect: finalAnswerCorrect,
+          status: finalAnswerCorrect ? 'correct' : 'incorrect',
+          studentAnswer: studentFinalAnswer,
+          correctAnswer: correctAnswers.length === 1 ? correctAnswers[0] : correctAnswers,
+          finalAnswerCorrect,
+          workingSteps: [],
+          marksAwarded: finalAnswerCorrect ? maxMarks : 0,
+          maxMarks,
+          feedback: finalAnswerCorrect ? 'Correct answer!' : 'Incorrect answer.',
+        };
+      }
+
       const stepResult = await evaluateWorkingStepsWithOpenAI(
         question,
-        workingSteps,
-        studentFinalAnswerForEvaluation,
+        cleanWorkingSteps,
+        studentFinalAnswer,
         correctAnswers
       );
       
       if (stepResult) {
         stepEvaluations = stepResult.steps;
-        correctSolutionSteps = stepResult.correctSolutionSteps;
+        aiFeedback = {
+          modelAnswer: stepResult.modelAnswer,
+          correctPoints: stepResult.correctPoints,
+          improvementPoints: stepResult.improvementPoints
+        };
       }
     } catch (error) {
       console.error('Error evaluating working steps:', error);
@@ -306,24 +341,34 @@ export async function evaluateOpenEnded(
     const totalSteps = stepEvaluations.length;
     
     // Award marks proportionally: 70% for steps, 30% for final answer
-    // Since final answer is wrong, only award based on steps
     const stepMarks = Math.round((correctStepsCount / totalSteps) * maxMarks * 0.7);
     marksAwarded = Math.max(0, stepMarks);
   }
   
+  // Determine status
+  let status: 'correct' | 'incorrect' | 'partially_correct' = 'incorrect';
+  if (finalAnswerCorrect) {
+    status = 'correct';
+  } else if (marksAwarded > 0) {
+    status = 'partially_correct';
+  }
+
   return {
     questionId: question.id,
     isCorrect: finalAnswerCorrect,
-    studentAnswer: finalAnswers.length === 1 ? finalAnswers[0] : finalAnswers,
+    status,
+    studentAnswer: workingSteps.filter(s => s.trim() !== ''), // Use all non-empty working steps as the student answer
     correctAnswer: correctAnswers.length === 1 ? correctAnswers[0] : correctAnswers,
     finalAnswerCorrect,
     workingSteps: stepEvaluations,
-    correctSolutionSteps,
+    aiFeedback,
     marksAwarded,
     maxMarks,
-    feedback: finalAnswerCorrect 
-      ? 'Correct answer!' 
-      : 'Incorrect answer. Please review your solution.',
+    feedback: status === 'correct'
+      ? 'Correct answer!'
+      : status === 'partially_correct'
+        ? 'Partially correct. You got some steps right.'
+        : 'Incorrect answer. Please review your solution.',
   };
 }
 

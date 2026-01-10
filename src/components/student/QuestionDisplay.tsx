@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MathInput } from '@/components/shared/MathInput';
 import { MathDisplay } from '@/components/shared/MathDisplay';
-import { StaticMathField, addStyles } from 'react-mathquill';
+import { addStyles } from 'react-mathquill';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2 } from 'lucide-react';
 import type { Question } from '@/types';
@@ -19,7 +19,6 @@ interface QuestionDisplayProps {
 export function QuestionDisplay({ question, answers, onAnswerChange }: QuestionDisplayProps) {
   // Working area state for open-ended questions
   const WORKING_STEPS_KEY = `working-steps-${question.id}`;
-  const FINAL_ANSWER_KEY = `final-answer-${question.id}`;
   
   // Get working steps from answers or initialize empty
   const getWorkingSteps = (): string[] => {
@@ -65,8 +64,18 @@ export function QuestionDisplay({ question, answers, onAnswerChange }: QuestionD
     onAnswerChange(WORKING_STEPS_KEY, JSON.stringify(newSteps));
   };
 
-  const handleFinalAnswerChange = (value: string) => {
-    onAnswerChange(FINAL_ANSWER_KEY, value);
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // Add new step after current one
+      const newSteps = [...workingSteps];
+      newSteps.splice(index + 1, 0, '');
+      setWorkingSteps(newSteps);
+      onAnswerChange(WORKING_STEPS_KEY, JSON.stringify(newSteps));
+    } else if (e.key === 'Backspace' && workingSteps[index] === '' && workingSteps.length > 1) {
+      e.preventDefault();
+      handleRemoveStep(index);
+    }
   };
 
   // Render segmented elements for fill-in-the-blank questions
@@ -89,7 +98,7 @@ export function QuestionDisplay({ question, answers, onAnswerChange }: QuestionD
 
     return (
       <div className="flex flex-wrap items-center gap-1">
-        {question.segmentedElements.map((element, index) => {
+        {question.segmentedElements.map((element) => {
           if (element.type === 'math') {
             return (
               <MathDisplay key={element.id} latex={element.value} className="text-base inline" />
@@ -223,16 +232,16 @@ export function QuestionDisplay({ question, answers, onAnswerChange }: QuestionD
         </div>
       )}
 
-      {/* Working Area and Final Answer - show for open-ended questions */}
+      {/* Working Area - show for open-ended questions */}
       {question.questionType === 'open-ended' && (
         <div className="space-y-6 pt-4 border-t border-border">
           {/* Working Area */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <h4 className="font-medium">Working Area</h4>
+                <h4 className="font-medium">Your Answer</h4>
                 <p className="text-xs text-muted-foreground">
-                  Use the working area to show your steps.
+                  Type your solution below. Press Enter to add a new line.
                 </p>
               </div>
               <Button
@@ -243,116 +252,37 @@ export function QuestionDisplay({ question, answers, onAnswerChange }: QuestionD
                 className="h-8"
               >
                 <Plus className="h-3 w-3 mr-1.5" />
-                Add Step
+                Add Line
               </Button>
             </div>
             
-            {workingSteps.length === 0 ? (
-              <div className="text-sm text-muted-foreground p-4 border border-dashed rounded-md text-center">
-                Click "Add Step" to show your working
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {workingSteps.map((step, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 min-w-[60px]">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Step {index + 1}:
-                      </span>
-                    </div>
-                    <div className="flex-1">
+            <div className="space-y-3">
+              {workingSteps.map((step, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <div onKeyDown={(e) => handleKeyDown(e, index)}>
                       <MathInput
                         value={step}
                         onChange={(value) => handleWorkingStepChange(index, value)}
-                        placeholder={`Enter step ${index + 1}...`}
+                        placeholder="Type math or text..."
                         className="w-full"
                       />
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveStep(index)}
-                      className="h-8 w-8 flex-shrink-0"
-                      title="Remove step"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Final Answer */}
-          <div className="space-y-3 pt-4 border-t border-border">
-            <div className="flex items-center gap-2">
-              <h4 className="font-medium">Final Answer</h4>
-              <span className="text-xs text-muted-foreground">(Required)</span>
-            </div>
-            
-            {question.answerBoxes && question.answerBoxes.length > 0 ? (
-              // Show final answer inputs with labels from answerBoxes
-              <div className="space-y-3">
-                {question.answerBoxes.map((answerBox) => {
-                  const finalAnswerKey = `${FINAL_ANSWER_KEY}-${answerBox.id}`;
-                  
-                  // Determine the label LaTeX to display
-                  let labelLatex = answerBox.label.trim();
-                  if (!labelLatex.endsWith('=')) {
-                    labelLatex += ' =';
-                  }
-                  
-                  // Convert simple variable names to LaTeX if needed
-                  // If it's not already LaTeX (contains backslashes), treat as plain text variable
-                  if (!labelLatex.includes('\\') && !answerBox.labelIsMath) {
-                    // Keep as is - StaticMathField can handle simple text like "x ="
-                    // But we might want to ensure proper spacing
-                    labelLatex = labelLatex.replace(/\s*=\s*/, ' = ');
-                  }
-                  
-                  return (
-                    <div key={answerBox.id} className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium flex items-center">
-                          <StaticMathField>{labelLatex}</StaticMathField>
-                        </span>
-                        <div className="w-[125px]">
-                          <MathInput
-                            value={answers[finalAnswerKey] || ''}
-                            onChange={(value) => onAnswerChange(finalAnswerKey, value)}
-                            placeholder="Enter value..."
-                            className="w-full"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {question.answerBoxes.every(box => !answers[`${FINAL_ANSWER_KEY}-${box.id}`]) && (
-                  <p className="text-xs text-muted-foreground">
-                    Please provide a final answer before submitting.
-                  </p>
-                )}
-              </div>
-            ) : (
-              // Fallback: single final answer input without label
-              <div className="space-y-2">
-                <div className="w-[125px]">
-                  <MathInput
-                    value={answers[FINAL_ANSWER_KEY] || ''}
-                    onChange={handleFinalAnswerChange}
-                    placeholder="Enter your final answer..."
-                    className="w-full"
-                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveStep(index)}
+                    disabled={workingSteps.length <= 1}
+                    className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                    title="Remove line"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-                {!answers[FINAL_ANSWER_KEY] && (
-                  <p className="text-xs text-muted-foreground">
-                    Please provide a final answer before submitting.
-                  </p>
-                )}
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         </div>
       )}
