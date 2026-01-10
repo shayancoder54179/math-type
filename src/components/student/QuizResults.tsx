@@ -48,7 +48,6 @@ export function QuizResults({ quiz, evaluation }: QuizResultsProps) {
     // 3. Heuristic for pure math or mixed content without delimiters
     // Check if the step contains common math operators or LaTeX-like syntax
     const hasMathOperators = /[\\^_{}]|[+\-*/=<>]|\([^)]*\)/.test(cleanStep);
-    const hasNumbers = /\d+/.test(cleanStep);
     
     // If it's mostly math or has no letters, treat as math
     const hasLetters = /[a-zA-Z]/.test(cleanStep);
