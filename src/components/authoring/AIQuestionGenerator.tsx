@@ -53,6 +53,7 @@ export function AIQuestionGenerator({ onGenerate, onCancel }: AIQuestionGenerato
         subtopic: formData.subtopic || undefined,
         count,
         difficulty: formData.difficulty,
+        totalMarks: formData.totalMarks ? parseInt(formData.totalMarks) : undefined,
       });
 
       if (!questions) {

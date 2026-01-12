@@ -84,7 +84,7 @@ export async function generateQuestionsWithOpenAI(
 
     if (error) {
       console.error('Error calling edge function:', error);
-      return null;
+      throw new Error(error.message || 'Error calling question generation service');
     }
 
     if (data.questions) {
@@ -115,10 +115,10 @@ export async function generateQuestionsWithOpenAI(
       }));
     }
 
-    return null;
+    throw new Error('No questions returned from service');
   } catch (err) {
     console.error('Exception calling edge function:', err);
-    return null;
+    throw err;
   }
 }
 

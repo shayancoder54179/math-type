@@ -66,12 +66,12 @@ export function QuizResults({ quiz, evaluation }: QuizResultsProps) {
   };
 
   const renderStepParts = (parts: Array<{ type: 'text' | 'math'; content: string }>) => (
-    <div className="flex-1 inline-flex flex-wrap gap-x-1.5 gap-y-1 items-baseline">
+    <div className="flex-1 block leading-relaxed">
       {parts.map((part, pIdx) => (
         part.type === 'text' ? (
           <span key={pIdx} className="text-foreground/90 font-medium whitespace-pre-wrap">{part.content}</span>
         ) : (
-          <MathDisplay key={pIdx} latex={part.content} className="inline-block" />
+          <MathDisplay key={pIdx} latex={part.content} className="inline-block align-baseline" />
         )
       ))}
     </div>
