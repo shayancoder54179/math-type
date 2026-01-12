@@ -12,6 +12,7 @@ interface GenerateQuestionsRequest {
   subtopic?: string;
   count: number;
   difficulty?: string;
+  totalMarks?: number;
 }
 
 serve(async (req) => {
@@ -29,7 +30,7 @@ serve(async (req) => {
       );
     }
 
-    const { qualification, board, topic, subtopic, count, difficulty } = await req.json() as GenerateQuestionsRequest;
+    const { qualification, board, topic, subtopic, count, difficulty, totalMarks } = await req.json() as GenerateQuestionsRequest;
 
     const prompt = `
     You are an expert mathematics examiner creating questions for ${qualification} ${board} curriculum.
@@ -42,6 +43,7 @@ serve(async (req) => {
     - Topic: ${topic}
     ${subtopic ? `- Subtopic: ${subtopic}` : ''}
     ${difficulty ? `- Difficulty Level: ${difficulty}` : ''}
+    ${totalMarks ? `- Total Marks per Question: Approximately ${Math.floor(totalMarks / count)}` : ''}
 
     Requirements:
     1. All questions must be OPEN-ENDED (students show working steps).

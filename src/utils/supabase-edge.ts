@@ -72,6 +72,7 @@ export interface GenerateQuestionsRequest {
   subtopic?: string;
   count: number;
   difficulty?: string;
+  totalMarks?: number;
 }
 
 export async function generateQuestionsWithOpenAI(
