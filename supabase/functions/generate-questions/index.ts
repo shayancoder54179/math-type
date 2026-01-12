@@ -32,9 +32,12 @@ serve(async (req) => {
 
     const { qualification, board, topic, subtopic, count, difficulty, totalMarks } = await req.json() as GenerateQuestionsRequest;
 
+    const randomSeed = Math.random().toString(36).substring(7);
+
     const prompt = `
     You are an expert mathematics examiner creating questions for ${qualification} ${board} curriculum.
     Generate questions that match the difficulty and style of real past papers.
+    Randomness seed for variety: ${randomSeed}
 
     Generate ${count} mathematics questions for:
     - Qualification: ${qualification}
@@ -46,8 +49,9 @@ serve(async (req) => {
     ${totalMarks ? `- Total Marks per Question: Approximately ${Math.floor(totalMarks / count)}` : ''}
 
     Requirements:
-    1. All questions must be OPEN-ENDED (students show working steps).
-    2. Each question needs:
+    1. All questions must be UNIQUE and VARIED. Do not repeat common examples.
+    2. All questions must be OPEN-ENDED (students show working steps).
+    3. Each question needs:
        - Clear question text with proper mathematical notation.
        - Marks allocation (appropriate to difficulty, typically 2-8 marks).
        - Detailed model answer showing step-by-step working.
@@ -112,7 +116,7 @@ serve(async (req) => {
             content: prompt,
           },
         ],
-        temperature: 0.7,
+        temperature: 0.8,
         response_format: { type: 'json_object' },
       }),
     });
