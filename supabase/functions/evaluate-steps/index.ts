@@ -27,7 +27,10 @@ interface StepEvaluation {
 
 interface StepEvaluationResponse {
   steps: StepEvaluation[];
-  correctSolutionSteps?: string[];
+  modelAnswer?: string[];
+  correctPoints?: string[];
+  improvementPoints?: string[];
+  correctSolutionSteps?: string[]; // Deprecated
   error?: string;
 }
 
@@ -207,7 +210,12 @@ IMPORTANT: Return ONLY the JSON object.`;
     }
 
     // Parse OpenAI response
-    let parsedResponse: { steps?: StepEvaluation[] };
+    let parsedResponse: { 
+      steps?: StepEvaluation[]; 
+      modelAnswer?: string[];
+      correctPoints?: string[];
+      improvementPoints?: string[];
+    };
     try {
       parsedResponse = JSON.parse(content);
     } catch {
