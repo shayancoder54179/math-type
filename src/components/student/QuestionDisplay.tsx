@@ -34,7 +34,10 @@ export function QuestionDisplay({ question, answers, onAnswerChange }: QuestionD
     return [];
   };
 
-  const [workingSteps, setWorkingSteps] = useState<string[]>(getWorkingSteps());
+  const [workingSteps, setWorkingSteps] = useState<string[]>(() => {
+    const steps = getWorkingSteps();
+    return steps.length > 0 ? steps : [''];
+  });
 
   // Sync working steps with answers when answers change externally
   useEffect(() => {

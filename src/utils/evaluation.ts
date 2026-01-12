@@ -293,18 +293,23 @@ export async function evaluateOpenEnded(
       const cleanWorkingSteps = workingSteps.filter(s => s.trim() !== '');
       
       if (cleanWorkingSteps.length === 0) {
-        // If all steps were empty, skip AI evaluation
+        // If all steps were empty, skip AI evaluation but still provide model answer if available
         return {
           questionId: question.id,
           isCorrect: finalAnswerCorrect,
           status: finalAnswerCorrect ? 'correct' : 'incorrect',
-          studentAnswer: studentFinalAnswer,
+          studentAnswer: [], // No non-empty steps
           correctAnswer: correctAnswers.length === 1 ? correctAnswers[0] : correctAnswers,
           finalAnswerCorrect,
           workingSteps: [],
+          aiFeedback: question.modelAnswer ? {
+            modelAnswer: question.modelAnswer,
+            correctPoints: [],
+            improvementPoints: ["You didn't provide any working steps."]
+          } : undefined,
           marksAwarded: finalAnswerCorrect ? maxMarks : 0,
           maxMarks,
-          feedback: finalAnswerCorrect ? 'Correct answer!' : 'Incorrect answer.',
+          feedback: finalAnswerCorrect ? 'Correct answer!' : 'Incorrect answer. Please show your working.',
         };
       }
 
@@ -318,7 +323,7 @@ export async function evaluateOpenEnded(
       if (stepResult) {
         stepEvaluations = stepResult.steps;
         aiFeedback = {
-          modelAnswer: stepResult.modelAnswer,
+          modelAnswer: stepResult.modelAnswer || question.modelAnswer || [],
           correctPoints: stepResult.correctPoints,
           improvementPoints: stepResult.improvementPoints
         };
@@ -327,6 +332,17 @@ export async function evaluateOpenEnded(
       console.error('Error evaluating working steps:', error);
       // Continue without step evaluation
     }
+  }
+
+  // If we don't have aiFeedback yet but we have a model answer in the question, provide it
+  if (!aiFeedback && question.modelAnswer) {
+    aiFeedback = {
+      modelAnswer: question.modelAnswer,
+      correctPoints: [],
+      improvementPoints: workingSteps.filter(s => s.trim() !== '').length === 0 
+        ? ["You didn't provide any working steps."] 
+        : ["AI feedback was unavailable for this response."]
+    };
   }
   
   // Calculate marks based on final answer and steps (rounded to whole number)
