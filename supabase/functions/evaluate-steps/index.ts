@@ -195,6 +195,8 @@ IMPORTANT: Return ONLY the JSON object.`;
 
     const openaiData = await openaiResponse.json();
     const content = openaiData.choices?.[0]?.message?.content;
+    
+    console.log('OpenAI Response:', content);
 
     if (!content) {
       return new Response(
