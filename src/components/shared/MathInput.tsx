@@ -11,6 +11,7 @@ interface MathInputProps {
   placeholder?: string;
   className?: string;
   onFocus?: () => void;
+  variant?: 'default' | 'ghost';
 }
 
 export interface MathInputHandle {
@@ -52,7 +53,7 @@ function convertToLatex(input: string): string {
   });
 
   // Convert exponents: x^2 -> x^{2}, x^n -> x^{n}
-  latex = latex.replace(/([a-zA-Z0-9)\}]+)\^([a-zA-Z0-9()+\-*]+)/g, '$1^{$2}');
+  latex = latex.replace(/([a-zA-Z0-9)}]+)\^([a-zA-Z0-9()+\-*]+)/g, '$1^{$2}');
 
   // Convert common functions
   latex = latex.replace(/\bsin\(/g, '\\sin(');
@@ -73,13 +74,14 @@ function convertToLatex(input: string): string {
   latex = latex.replace(/\binfty\b/g, '\\infty');
 
   // Convert multiplication: * -> \times
-  latex = latex.replace(/([a-zA-Z0-9)\}])\s*\*\s*([a-zA-Z0-9(])/g, '$1 \\times $2');
+  latex = latex.replace(/([a-zA-Z0-9)}])\s*\*\s*([a-zA-Z0-9(])/g, '$1 \\times $2');
 
   return latex;
 }
 
 export const MathInput = forwardRef<MathInputHandle, MathInputProps>(
-  ({ value, onChange, placeholder: _placeholder, className, onFocus }, ref) => {
+  ({ value, onChange, className, onFocus, variant = 'default' }, ref) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mathFieldRef = useRef<any>(null);
     const isUpdatingRef = useRef(false);
     const conversionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,7 +110,7 @@ export const MathInput = forwardRef<MathInputHandle, MathInputProps>(
               // Return the full latex for now - we'll split it differently
               return latex.length; // Approximate: return length as position
             }
-          } catch (e) {
+          } catch {
             // Fallback
           }
         }
@@ -133,6 +135,7 @@ export const MathInput = forwardRef<MathInputHandle, MathInputProps>(
     const latexValue = value ? convertToLatex(value) : '';
 
     // Handle changes from MathQuill
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleChange = (mathField: any) => {
       if (isUpdatingRef.current) return;
       
@@ -221,15 +224,23 @@ export const MathInput = forwardRef<MathInputHandle, MathInputProps>(
     const containerClass = isInline 
       ? cn('inline-block', className, 'overflow-hidden') 
       : cn('w-full', className);
-    const inputClass = isInline 
-      ? "min-h-[40px] border border-input bg-background rounded-md px-2 py-1 text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
-      : "w-full min-h-[40px] border border-input bg-background rounded-md px-3 py-2 text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2";
+    
+    const baseInputClass = "text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2";
+    const defaultInputClass = "border border-input bg-background rounded-md px-3 py-2";
+    const ghostInputClass = "border-none bg-transparent px-0 py-1 focus-within:ring-0 focus-within:ring-offset-0";
+    
+    const inputClass = cn(
+      baseInputClass,
+      variant === 'default' ? defaultInputClass : ghostInputClass,
+      isInline ? "min-h-[40px] px-2 py-1" : "min-h-[40px]"
+    );
 
     return (
       <div className={containerClass} style={isInline ? { maxWidth: '100%' } : undefined}>
         <EditableMathField
           latex={latexValue}
           onChange={handleChange}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           mathquillDidMount={(mathField: any) => {
             mathFieldRef.current = mathField;
             // Add focus handler if provided

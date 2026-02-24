@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MathInput, type MathInputHandle } from '@/components/shared/MathInput';
 import type { QuestionBlock as QuestionBlockType } from '@/types';
-import { getNextBlankNumber, findBlanks } from '@/utils/blanks';
+import { getNextBlankNumber } from '@/utils/blanks';
 
 interface QuestionBlockProps {
   block: QuestionBlockType;
@@ -60,15 +60,22 @@ export function QuestionBlock({ block, onChange, onDelete, allBlocks = [], quest
   };
 
   return (
-    <div className={`flex items-start gap-2 p-2 rounded-md bg-card ${block.type === 'text' ? 'border border-border' : 'border border-border'}`}>
-      <div className="flex-1 space-y-2">
-        {block.type === 'math' ? (
+    <div className={`group relative flex items-center gap-1 p-0.5 hover:bg-muted/50 rounded transition-colors ${block.type === 'newline' ? 'w-full' : ''}`}>
+      <div className="flex-1 min-w-0">
+        {block.type === 'newline' ? (
+          <div className="w-full flex items-center gap-2">
+            <div className="h-[1px] flex-1 bg-border border-dashed border-t" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-2">Line Break</span>
+            <div className="h-[1px] flex-1 bg-border border-dashed border-t" />
+          </div>
+        ) : block.type === 'math' ? (
           <MathInput
             ref={mathInputRef}
             value={block.content}
             onChange={(content) => onChange(block.id, content)}
-            placeholder="Enter math expression (e.g., x/3, x^2, sqrt(x))"
-            className="w-full"
+            placeholder="Enter math..."
+            className="w-auto min-w-[30px]"
+            variant="ghost"
           />
         ) : (
           <Input
@@ -76,7 +83,8 @@ export function QuestionBlock({ block, onChange, onDelete, allBlocks = [], quest
             value={block.content}
             onChange={(e) => onChange(block.id, e.target.value)}
             placeholder="Enter text..."
-            className="w-full"
+            className="w-auto min-w-[60px] border-none shadow-none focus-visible:ring-0 px-1 min-h-0 h-auto py-0.5 bg-transparent"
+            style={{ width: `${Math.max((block.content || '').length + 1, 4)}ch` }}
           />
         )}
         {showInsertBlank && (
@@ -85,7 +93,7 @@ export function QuestionBlock({ block, onChange, onDelete, allBlocks = [], quest
             variant="outline"
             size="sm"
             onClick={handleInsertBlank}
-            className="h-7 text-xs"
+            className="h-6 text-[10px] mt-1"
           >
             Insert Blank
           </Button>
@@ -95,11 +103,10 @@ export function QuestionBlock({ block, onChange, onDelete, allBlocks = [], quest
         variant="ghost"
         size="icon"
         onClick={() => onDelete(block.id)}
-        className="h-8 w-8"
+        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity absolute right-1 top-1 text-muted-foreground hover:text-destructive"
       >
-        <X className="h-4 w-4" />
+        <X className="h-3 w-3" />
       </Button>
     </div>
   );
 }
-
